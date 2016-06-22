@@ -21,6 +21,7 @@ function baseSuite() {
         it('hits the proxy', function(done) {
             request(this.app)
                 .get('/counter.js')
+                .expect('Content-Type', 'application/javascript')
                 .expect('X-Babel-Cache', 'true')
                 .expect(200, done);
         });
@@ -28,6 +29,7 @@ function baseSuite() {
         it("doesn't get a cache hit", function(done) {
             request(this.app)
                 .get('/counter.js')
+                .expect('Content-Type', 'application/javascript')
                 .expect('X-Babel-Cache-Hit', 'false')
                 .expect(200, done);
         });
@@ -37,6 +39,7 @@ function baseSuite() {
 
             request(this.app)
                 .get('/counter.js')
+                .expect('Content-Type', 'application/javascript')
                 .expect('X-Babel-Cache', 'true')
                 .expect(200)
                 .expect(expectedCode, done);
@@ -51,6 +54,7 @@ function baseSuite() {
         it('should get a cache hit', function(done) {
             request(this.app)
                 .get('/counter.js')
+                .expect('Content-Type', 'application/javascript')
                 .expect('X-Babel-Cache-Hit', 'true')
                 .expect(200, done);
         });
@@ -60,6 +64,7 @@ function baseSuite() {
 
             request(this.app)
                 .get('/counter.js')
+                .expect('Content-Type', 'application/javascript')
                 .expect('X-Babel-Cache', 'true')
                 .expect('X-Babel-Cache-Hit', 'true')
                 .expect(200)
@@ -110,6 +115,7 @@ function baseSuite() {
         it('does not return a cached response', function(done) {
             request(this.app)
                 .get(this.url)
+                .expect('Content-Type', 'application/javascript')
                 .expect('X-Babel-Cache-Hit', 'false')
                 .expect(200, done);
         });
@@ -212,6 +218,7 @@ describe('middleware', function() {
             it('uses previously cached assets', function(done) {
                 request(this.app)
                     .get('/counter.js')
+                    .expect('Content-Type', 'application/javascript')
                     .expect('X-Babel-Cache-Hit', 'true')
                     .expect(200, done);
             });
@@ -226,6 +233,7 @@ describe('middleware', function() {
                 it('loads an uncached version again', function(done) {
                     request(this.app)
                         .get('/counter.js')
+                        .expect('Content-Type', 'application/javascript')
                         .expect('X-Babel-Cache-Hit', 'false')
                         .expect(200, done);
                 });
@@ -266,6 +274,7 @@ describe('middleware', function() {
 
             request(this.app)
                 .get('/counter-syntax-error.js')
+                .expect('Content-Type', 'application/javascript')
                 .expect('X-Babel-Cache', 'false')
                 .expect(200)
                 .expect(expectedCode, done);
