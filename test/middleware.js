@@ -7,8 +7,12 @@ var fs = require('fs'),
     babel = require('babel-core'),
     babelMiddleware = require('../index');
 
-function transformFile(file) {
-    return babel.transformFileSync(file, { stage: 0 }).code;
+function transformFile(file, options) {
+    return babel.transformFileSync(file, options || { stage: 0 }).code;
+}
+
+function generateMap(file) {
+    return babel.transformFileSync(file, { sourceMaps: true }).map;
 }
 
 function baseSuite() {
@@ -265,6 +269,52 @@ describe('middleware', function() {
                 .expect('X-Babel-Cache', 'false')
                 .expect(200)
                 .expect(expectedCode, done);
+        });
+    });
+
+    describe('source maps', function () {
+        beforeEach(function() {
+            this.app = express();
+            this.app.use(babelMiddleware({
+                cachePath: 'memory',
+                srcPath: __dirname + '/fixtures',
+                babelOptions: {
+                    sourceMaps: true
+                }
+            }));
+        });
+
+        it('returns the js file with the map declaration', function(done) {
+            var expectedCode = transformFile(__dirname + '/fixtures/counter.js', { sourceMaps: true }) +
+             '\n//# sourceMappingURL=counter.js.map';
+
+            request(this.app)
+                .get('/counter.js')
+                .expect(200)
+                .expect(expectedCode, done);
+        });
+
+        it('returns the expected map file', function(done) {
+            var expectedMap = JSON.stringify(generateMap(__dirname + '/fixtures/counter.js'));
+
+            var app = this.app;
+            request(app)
+                .get('/counter.js')
+                .expect(200)
+                .end(function () {
+                    request(app)
+                        .get('/counter.js.map')
+                        .expect('X-Babel-Cache', 'true')
+                        .expect('Content-Type', 'application/json')
+                        .expect(200)
+                        .expect(expectedMap, done);
+                });
+        });
+
+        it('404s if map file not found', function(done) {
+            request(this.app)
+                .get('/counter.js.map')
+                .expect(404, done);
         });
     });
 });

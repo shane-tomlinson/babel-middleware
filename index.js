@@ -28,7 +28,10 @@ module.exports = function(options) {
     var hashMap = {};
 
     // hash to transpiled file contents map
-    var cacheMap = {};
+    var jsCacheMap = {};
+
+    // map file cache.
+    var mapCacheMap = {};
 
     if (!isMemoryCache) {
         try {
@@ -63,11 +66,25 @@ module.exports = function(options) {
         res.end();
     }
 
-    function pathForHash(hash) {
-        return path.resolve(cachePath + '/' + hash + '.js');
+    function pathForHash(hash, extension) {
+        return path.resolve(cachePath + '/' + hash + extension);
     }
 
     return function(req, res, next) {
+        if (/\.map$/.test(req.path)) {
+          var mapFile = mapCacheMap[req.path];
+          if (mapFile) {
+              res.append('Content-Type', 'application/json');
+              res.append('X-Babel-Cache', true);
+              res.write(mapFile);
+              res.end();
+          } else {
+              next();
+          }
+
+          return;
+        }
+
         var src = path.resolve(srcPath + '/' + req.path); // XXX Need the correct path
         var hash = fileLastModifiedHash(src);
         var lastKnownHash = hashMap[src];
@@ -92,7 +109,7 @@ module.exports = function(options) {
         res.append('X-Babel-Cache-Hash', hash);
 
         if (!isMemoryCache) {
-            hashPath = pathForHash(hash);
+            hashPath = pathForHash(hash, '.js');
             try {
                 fs.statSync(hashPath);
                 hashMap[src] = lastKnownHash = hash;
@@ -123,7 +140,7 @@ module.exports = function(options) {
                 res.append('X-Babel-Cache-Hit', true);
                 if (isMemoryCache) {
                     log('Serving (cached): %s', src);
-                    res.write(cacheMap[hash]);
+                    res.write(jsCacheMap[hash]);
                     res.end();
                 } else {
                     log('Serving (cached): %s', hashPath);
@@ -139,11 +156,11 @@ module.exports = function(options) {
 
         res.append('X-Babel-Cache-Hit', false);
 
-        if (isMemoryCache && lastKnownHash && lastKnownHash in cacheMap) {
-            delete cacheMap[lastKnownHash];
+        if (isMemoryCache && lastKnownHash && lastKnownHash in jsCacheMap) {
+            delete jsCacheMap[lastKnownHash];
         } else if (!isMemoryCache && lastKnownHash) {
             try {
-                fs.unlinkSync(pathForHash(lastKnownHash));
+                fs.unlinkSync(pathForHash(lastKnownHash, '.js'));
             } catch(e) {}
         }
 
@@ -158,8 +175,15 @@ module.exports = function(options) {
         var code = result.code;
         hashMap[src] = hash;
 
+        if (result.map) {
+            // for v1, only an in-memory map cache.
+            mapCacheMap[req.path + '.map'] = JSON.stringify(result.map);
+            var mapFilename = path.basename(req.path) + '.map';
+            code += '\n//# sourceMappingURL=' + mapFilename;
+        }
+
         if (isMemoryCache) {
-            cacheMap[hash] = code;
+            jsCacheMap[hash] = code;
         } else {
             fs.writeFile(hashPath, code, function(err) {
                 if (err) {
