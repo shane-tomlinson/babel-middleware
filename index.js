@@ -53,7 +53,7 @@ module.exports = function(options) {
     // filename to last known hash map
     var hashMap = {};
 
-    var cache = new Cache(options.cachePath, logger, options);
+    var cache = new Cache(cachePath, logger, options);
 
     var babelOptions = options.babelOptions || { presets: [] };
 
